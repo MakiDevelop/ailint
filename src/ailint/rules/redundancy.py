@@ -12,6 +12,12 @@ TOKEN_RE = re.compile(r"[A-Za-z0-9_]+|[\u4e00-\u9fff]{2,}")
 THRESHOLD = 0.7
 
 
+def _is_ancestor(ancestor: Section, descendant: Section) -> bool:
+    if ancestor.line_start <= descendant.line_start and ancestor.line_end >= descendant.line_end:
+        return ancestor is not descendant
+    return False
+
+
 class RedundancyRule(Rule):
     id = "R003"
     name = "redundancy"
@@ -41,10 +47,12 @@ class RedundancyRule(Rule):
         diagnostics: list[Diagnostic] = []
         for left_index in range(len(all_sections)):
             for right_index in range(left_index + 1, len(all_sections)):
+                left = all_sections[left_index]
+                right = all_sections[right_index]
+                if _is_ancestor(left, right) or _is_ancestor(right, left):
+                    continue
                 similarity = _cosine(vectors[left_index], vectors[right_index])
                 if similarity > THRESHOLD:
-                    left = all_sections[left_index]
-                    right = all_sections[right_index]
                     diagnostics.append(
                         Diagnostic(
                             self.id,

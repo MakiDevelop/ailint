@@ -25,11 +25,12 @@ Typical run:
 
 ```
 $ ailint CLAUDE.md
-
-CLAUDE.md:1:1   info    [R001] File has 487 lines (approaching recommended limit of 500)
-CLAUDE.md:45:3  warning [R002] Vague language: "盡量不要" — rephrase as a concrete prohibition or remove
+/tmp/.../CLAUDE.md:3:6 warning [R002] Vague phrase 'try to' is hard to enforce.
+  suggestion: Replace it with a concrete condition, threshold, or required action.
+/tmp/.../CLAUDE.md:6:5 error [R004] Referenced path does not exist: rules/deploy-sop.md
+  suggestion: Fix the path, create the referenced file, or remove the stale reference.
 ...
-✖ 6 problems (1 error, 5 warnings)
+✖ 5 problems (1 error, 4 warnings)
 ```
 
 Clean file:
