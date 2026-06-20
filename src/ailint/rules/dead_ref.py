@@ -9,12 +9,26 @@ from ailint.rules import Diagnostic, Rule
 
 PATH_RE = re.compile(
     r"(?<![\w:/.-])("
-    r"~/(?:[^\s`'\"<>),]+)|"
-    r"\./(?:[^\s`'\"<>),]+)|"
+    r"~/(?:[^\s`'\"<>),）」】]+)|"
+    r"\./(?:[^\s`'\"<>),）」】]+)|"
     r"(?:[A-Za-z0-9_.-]+/)+(?:[A-Za-z0-9_.-]+\.[A-Za-z0-9]+)"
     r")"
 )
 URL_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://")
+
+_VERSION_RE = re.compile(r"^[\d.]+/[\d.]+$")
+
+_SKIP_PREFIXES = (
+    "http://", "https://",
+    "roles/",
+    "schemas/",
+)
+
+_SKIP_PATTERNS = [
+    re.compile(r"^[A-Za-z]+/[\d.]+"),  # Chrome/91.0, axios/0.21.4
+    re.compile(r"^\d+\.\d+/\d+"),       # 1.1/1.2, 3.12/3.13
+    re.compile(r".*\*"),                 # wildcard paths
+]
 
 
 class DeadReferenceRule(Rule):
@@ -31,17 +45,32 @@ class DeadReferenceRule(Rule):
 
     def check(self, sections: list[Section], raw_text: str) -> list[Diagnostic]:
         diagnostics: list[Diagnostic] = []
-        seen: set[tuple[str, int]] = set()
+        seen: set[str] = set()
+        in_code_block = False
 
         for line_no, line in enumerate(raw_text.splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith("```"):
+                in_code_block = not in_code_block
+                continue
+            if in_code_block:
+                continue
+
             for match in PATH_RE.finditer(line):
-                raw_path = match.group(1).rstrip(".,;:")
-                if URL_RE.match(raw_path) or raw_path.startswith(("http://", "https://")):
+                raw_path = match.group(1).rstrip(".,;:）」】")
+                if raw_path in seen:
                     continue
-                key = (raw_path, line_no)
-                if key in seen:
+
+                if any(raw_path.startswith(p) for p in _SKIP_PREFIXES):
                     continue
-                seen.add(key)
+                if URL_RE.match(raw_path):
+                    continue
+                if _VERSION_RE.match(raw_path):
+                    continue
+                if any(p.match(raw_path) for p in _SKIP_PATTERNS):
+                    continue
+
+                seen.add(raw_path)
 
                 candidate = Path(raw_path).expanduser()
                 if not candidate.is_absolute():

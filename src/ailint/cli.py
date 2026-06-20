@@ -18,12 +18,24 @@ SEVERITY_RANK = {"info": 0, "warning": 1, "error": 2}
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     path = _resolve_path(args.path)
-    if path is None or not path.exists():
-        target = args.path or " / ".join(KNOWN_FILENAMES)
-        print(f"ailint: file not found: {target}", file=sys.stderr)
-        return 2
+    error_msg = None
+    if path is None:
+        names = ", ".join(KNOWN_FILENAMES)
+        error_msg = f"no config file found in current directory (looked for {names})"
+    elif not path.exists():
+        error_msg = f"file not found: {args.path}"
+    elif not path.is_file():
+        error_msg = f"not a file: {path}"
 
-    raw_text = path.read_text(encoding="utf-8")
+    if error_msg is None:
+        try:
+            raw_text = path.read_text(encoding="utf-8")  # type: ignore[union-attr]
+        except (UnicodeDecodeError, OSError) as exc:
+            error_msg = f"cannot read file: {exc}"
+
+    if error_msg is not None:
+        _print_error(error_msg, args.format)
+        return 2
     sections = parse(raw_text)
 
     diagnostics: list[Diagnostic] = []
@@ -93,6 +105,16 @@ def _filter_by_severity(diagnostics: list[Diagnostic], minimum: str) -> list[Dia
         for diagnostic in diagnostics
         if SEVERITY_RANK.get(diagnostic.severity, 0) >= threshold
     ]
+
+
+def _print_error(message: str, fmt: str) -> None:
+    import json as _json
+    if fmt == "json":
+        print(_json.dumps({"error": message}, ensure_ascii=False))
+    elif fmt == "github":
+        print(f"::error ::{message}")
+    else:
+        print(f"ailint: {message}", file=sys.stderr)
 
 
 if __name__ == "__main__":

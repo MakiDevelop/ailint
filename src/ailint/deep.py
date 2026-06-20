@@ -8,7 +8,22 @@ import subprocess
 from ailint.rules import Diagnostic
 
 
-LINE_RE = re.compile(r"(?:line|行)\s*(\d+)", re.IGNORECASE)
+PROMPT_TEMPLATE = """You are a strict config file auditor. Analyze this AI agent configuration for semantic contradictions — rules that conflict with each other in meaning.
+
+RULES:
+1. Only report genuine logical contradictions, not stylistic differences.
+2. Each contradiction must reference specific line numbers from the file.
+3. Output ONLY in this exact format, one per line:
+
+CONTRADICTION:<line_a>:<line_b>:<one-sentence description>
+
+4. If no contradictions exist, output exactly: NONE
+5. Do NOT output any other text, explanation, or preamble.
+
+File content (with line numbers):
+---
+{content}
+---"""
 
 
 def run_deep_analysis(path: str | Path, raw_text: str) -> list[Diagnostic]:
@@ -18,53 +33,52 @@ def run_deep_analysis(path: str | Path, raw_text: str) -> list[Diagnostic]:
             "claude CLI not found. Install Claude Code or remove --deep to run stdlib-only checks."
         )
 
-    prompt = (
-        "Analyze this AI agent config for semantic contradictions. "
-        "Return one issue per line in this format: line: message. "
-        "Only report likely contradictions.\n\n"
-        f"File: {path}\n\n{raw_text}"
-    )
+    numbered = "\n".join(f"{i}: {line}" for i, line in enumerate(raw_text.splitlines(), 1))
+    prompt = PROMPT_TEMPLATE.format(content=numbered)
+
     result = subprocess.run(
         [claude, "-p", prompt],
         check=False,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        timeout=120,
     )
 
     if result.returncode != 0:
         detail = result.stderr.strip() or result.stdout.strip() or "unknown error"
         raise RuntimeError(f"claude CLI failed: {detail}")
 
-    return _parse_claude_response(result.stdout)
+    return _parse_response(result.stdout)
 
 
-def _parse_claude_response(response: str) -> list[Diagnostic]:
+_CONTRA_RE = re.compile(r"^CONTRADICTION:(\d+):(\d+):(.+)$")
+
+
+def _parse_response(response: str) -> list[Diagnostic]:
     diagnostics: list[Diagnostic] = []
-    for raw_line in response.splitlines():
-        line = raw_line.strip()
-        if not line:
+
+    for line in response.strip().splitlines():
+        line = line.strip()
+        if line == "NONE" or not line:
             continue
 
-        line_no = 1
-        message = line
-        prefix = re.match(r"^(\d+)\s*:\s*(.+)$", line)
-        if prefix:
-            line_no = int(prefix.group(1))
-            message = prefix.group(2).strip()
-        else:
-            match = LINE_RE.search(line)
-            if match:
-                line_no = int(match.group(1))
+        m = _CONTRA_RE.match(line)
+        if not m:
+            continue
+
+        line_a = int(m.group(1))
+        line_b = int(m.group(2))
+        desc = m.group(3).strip()
 
         diagnostics.append(
             Diagnostic(
                 "R005-deep",
                 "warning",
-                line_no,
+                min(line_a, line_b),
                 1,
-                message,
-                "Resolve the semantic conflict or document the exact precedence rule.",
+                f"Semantic contradiction (lines {line_a} vs {line_b}): {desc}",
+                "Resolve the conflict or document the exact precedence rule.",
             )
         )
 

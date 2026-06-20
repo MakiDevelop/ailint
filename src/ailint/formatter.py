@@ -77,7 +77,10 @@ def _summary(diagnostics: list[Diagnostic], no_color: bool) -> str:
         return "✔ No problems found"
     errors = sum(1 for diagnostic in diagnostics if diagnostic.severity == "error")
     warnings = sum(1 for diagnostic in diagnostics if diagnostic.severity == "warning")
-    text = f"✖ {len(diagnostics)} problems ({errors} errors, {warnings} warnings)"
+    def _pl(n: int, word: str) -> str:
+        return f"{n} {word}" if n == 1 else f"{n} {word}s"
+    total = len(diagnostics)
+    text = f"✖ {_pl(total, 'problem')} ({_pl(errors, 'error')}, {_pl(warnings, 'warning')})"
     if no_color or errors == 0:
         return text
     return f"{COLORS['error']}{text}{RESET}"
