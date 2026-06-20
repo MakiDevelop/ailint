@@ -1,17 +1,18 @@
 $ ailint CLAUDE.md
-CLAUDE.md:3:20 warning [R002] Vague phrase 'try to' is hard to enforce.
+
+CLAUDE.md:3:20  warning [R002] Vague phrase 'try to' is hard to enforce.
   suggestion: Replace it with a concrete condition, threshold, or required action.
-CLAUDE.md:27:1 warning [R005] Possible contradiction in section 'Routing, Presets & North Star': '直接做' at line 27 conflicts with '先問' at line 41.
+CLAUDE.md:27:1  warning [R005] Possible contradiction in section 'Task Execution': '直接做' at line 27 conflicts with '先確認' at line 41.
   suggestion: Clarify the condition that decides whether action is automatic or requires confirmation.
-CLAUDE.md:55:1 warning [R003] Section 'Safety & Operations' overlaps with 'Core Operating Contract' (0.72 similarity).
+CLAUDE.md:55:1  warning [R003] Section 'Safety & Operations' overlaps with 'Operational Safety' (0.72 similarity).
   suggestion: Merge duplicate guidance or make each section cover a distinct responsibility.
-CLAUDE.md:78:1 warning [R001] Section 'Memory & Session' has 118 lines; sections above 100 lines are hard to scan.
+CLAUDE.md:78:1  warning [R001] Section 'Memory & Session' has 118 lines; sections above 100 lines are hard to scan.
   suggestion: Break the section into focused subsections or remove repeated guidance.
-CLAUDE.md:112:12 warning [R002] Vague phrase 'ideally' is hard to enforce.
-  suggestion: Replace it with a concrete condition, threshold, or required action.
-CLAUDE.md:145:5 error [R004] Referenced path does not exist: rules/deploy-sop.md
+CLAUDE.md:145:5 error   [R004] Referenced path does not exist: rules/deploy-sop.md
   suggestion: Fix the path, create the referenced file, or remove the stale reference.
-✖ 6 problems (1 errors, 5 warnings)
+
+✖ 5 problems (1 error, 4 warnings)
+
 
 $ ailint CLAUDE.md
 

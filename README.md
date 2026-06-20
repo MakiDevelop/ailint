@@ -6,31 +6,33 @@ Lint AI agent configuration files for structural problems that agents silently i
 
 - Scans CLAUDE.md, AGENTS.md, GEMINI.md, .cursorrules, .windsurfrules for bloat, vague language, redundancy, dead references, and contradictions.
 - Reports problems with file:line:column, severity, rule ID, and suggested fixes.
-- Provides --deep mode for semantic analysis via the claude CLI.
+- Provides `--deep` mode for semantic contradiction analysis via the Claude CLI.
 
 ## Quick start
 
 ```bash
 pip install ailint
-ailint
-ailint CLAUDE.md
-ailint --deep AGENTS.md
+```
+
+```bash
+ailint                    # auto-detects config file in current directory
+ailint CLAUDE.md          # specify a file
+ailint --deep AGENTS.md   # add LLM-powered semantic analysis
 ```
 
 ## Example output
 
-See [examples/sample_output.txt](examples/sample_output.txt).
-
-Typical run:
-
 ```
 $ ailint CLAUDE.md
-/tmp/.../CLAUDE.md:3:6 warning [R002] Vague phrase 'try to' is hard to enforce.
+
+CLAUDE.md:3:20  warning [R002] Vague phrase 'try to' is hard to enforce.
   suggestion: Replace it with a concrete condition, threshold, or required action.
-/tmp/.../CLAUDE.md:6:5 error [R004] Referenced path does not exist: rules/deploy-sop.md
+CLAUDE.md:27:1  warning [R005] Possible contradiction in section 'Task Execution': ...
+  suggestion: Clarify the condition that decides whether action is automatic or requires confirmation.
+CLAUDE.md:145:5 error   [R004] Referenced path does not exist: rules/deploy-sop.md
   suggestion: Fix the path, create the referenced file, or remove the stale reference.
-...
-✖ 5 problems (1 error, 4 warnings)
+
+✖ 3 problems (1 error, 2 warnings)
 ```
 
 Clean file:
@@ -43,19 +45,26 @@ $ ailint CLAUDE.md
 
 ## Rules
 
-| ID   | Name            | Severity     | Description                                      |
-|------|-----------------|--------------|--------------------------------------------------|
-| R001 | bloat           | warning/error| File or section too long                         |
-| R002 | vague-language  | warning      | Unenforceable language that agents can't act on  |
-| R003 | redundancy      | warning      | Duplicate rules written different ways           |
-| R004 | dead-reference  | error        | References to files/paths that don't exist       |
-| R005 | contradiction   | warning      | Rules that contradict each other                 |
-
-R001 triggers warning above 500 lines, error above 1000. Sections longer than 100 lines also flagged.
+| ID | Name | Default Severity | What it catches |
+|----|------|-----------------|-----------------|
+| R001 | bloat | warning / error | File >500 lines (warn) or >1000 (error). Sections >100 lines. |
+| R002 | vague-language | warning | Unenforceable phrases: "try to", "when possible", "盡量", "適當", etc. Skips definition context (e.g. "forbidden: 大概"). |
+| R003 | redundancy | warning | Sections with >70% TF-IDF cosine similarity. Skips parent-child pairs. |
+| R004 | dead-reference | error | Local file paths that don't exist. Filters out version numbers, cloud IAM roles, and wildcards. |
+| R005 | contradiction | warning | Keyword pairs that conflict: "always" vs "never", "直接做" vs "先確認", etc. |
 
 ## Deep mode
 
-`ailint --deep` invokes the `claude` CLI to perform semantic contradiction detection beyond the built-in keyword rules. Requires Claude Code CLI to be installed and authenticated. Falls back gracefully with an error if unavailable.
+`ailint --deep` invokes the `claude` CLI to perform semantic contradiction detection beyond keyword matching. It finds contradictions that static rules miss — like "use barrel files" conflicting with "never use barrel exports" in the same config.
+
+Requires [Claude Code](https://claude.ai/claude-code) installed and authenticated.
+
+## Install
+
+```bash
+pip install ailint          # standard
+pipx install ailint         # recommended on macOS with Homebrew Python
+```
 
 ## CLI reference
 
@@ -65,19 +74,15 @@ usage: ailint [-h] [--deep] [--format {text,json,github}]
               [path]
 
 positional arguments:
-  path                  Path to CLAUDE.md, AGENTS.md, GEMINI.md, .cursorrules, or .windsurfrules.
+  path           Path to config file (auto-detects if omitted)
 
 options:
-  --deep                Use claude CLI for semantic contradiction analysis.
-  --format {text,json,github}
-                        Output format.
-  --severity {info,warning,error}
-                        Minimum severity to report.
-  --no-color            Disable ANSI colors in text output.
-  --version             Show version and exit.
+  --deep         LLM-powered semantic analysis (requires claude CLI)
+  --format       Output format: text (default), json, github
+  --severity     Minimum severity to report: info, warning, error
+  --no-color     Disable ANSI colors
+  --version      Show version
 ```
-
-If no path is given, ailint looks for known filenames in the current directory.
 
 ## The story
 
@@ -85,8 +90,13 @@ I spent months adding rules to my CLAUDE.md until it hit 3,550 lines. Then I ana
 
 ## Contributing
 
-Issues and pull requests welcome. Run tests with your preferred Python tooling. Keep changes focused and include example inputs that trigger the rule.
+Issues and pull requests welcome. To run tests:
+
+```bash
+pip install -e ".[test]"
+pytest
+```
 
 ## License
 
-MIT License. See LICENSE.
+MIT
