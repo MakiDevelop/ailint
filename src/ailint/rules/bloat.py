@@ -37,6 +37,8 @@ class BloatRule(Rule):
             )
 
         for section in flatten_sections(sections):
+            if section.level <= 1:
+                continue
             section_lines = section.line_end - section.line_start + 1
             if section_lines > 100:
                 diagnostics.append(
