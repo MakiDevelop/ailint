@@ -1,5 +1,5 @@
 [project]
-name = "ailint"
+name = "airulelint"
 version = "0.1.0"
 description = "Lint AI agent configuration markdown files for structural problems."
 readme = "README.md"

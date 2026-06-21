@@ -11,7 +11,7 @@ Lint AI agent configuration files for structural problems that agents silently i
 ## Quick start
 
 ```bash
-pip install ailint
+pip install airulelint
 ```
 
 ```bash
@@ -62,9 +62,11 @@ Requires [Claude Code](https://claude.ai/claude-code) installed and authenticate
 ## Install
 
 ```bash
-pip install ailint          # standard
-pipx install ailint         # recommended on macOS with Homebrew Python
+pip install airulelint          # standard
+pipx install airulelint         # recommended on macOS with Homebrew Python
 ```
+
+The PyPI package is `airulelint` — the CLI command it installs is `ailint`.
 
 ## CLI reference
 
